@@ -1,0 +1,586 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useForm, useFieldArray, useWatch } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Plus, Trash2, ArrowLeft, GripVertical } from 'lucide-react';
+import { toast } from 'sonner';
+import { addDays, format } from 'date-fns';
+import { cn } from '@/lib/utils';
+
+import { invoiceSchema, type InvoiceFormValues } from '@/lib/validations/invoice-schema';
+import { createInvoice, updateInvoice } from '@/lib/actions/invoice-actions';
+import { CURRENCIES, PAYMENT_TERMS_OPTIONS } from '@/lib/constants';
+import type { Organization, Customer, Invoice, InvoiceFormData } from '@/lib/types';
+
+import { InvoicePreview } from './invoice-preview';
+import { CustomerSelector } from './customer-selector';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Switch } from '@/components/ui/switch';
+
+interface InvoiceCreatorProps {
+  organization: Organization | null;
+  customers: Customer[];
+  nextInvoiceNumber: string;
+  existingInvoice?: Invoice;
+  preselectedCustomerId?: string;
+}
+
+export function InvoiceCreator({
+  organization,
+  customers,
+  nextInvoiceNumber,
+  existingInvoice,
+  preselectedCustomerId,
+}: InvoiceCreatorProps) {
+  const router = useRouter();
+  const isEdit = !!existingInvoice;
+
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const defaultTerms = organization?.default_payment_terms ?? 30;
+  const defaultDue = format(addDays(new Date(), defaultTerms), 'yyyy-MM-dd');
+
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+    preselectedCustomerId
+      ? (customers.find((c) => c.id === preselectedCustomerId) ?? null)
+      : existingInvoice?.customer ?? null,
+  );
+
+  const form = useForm<InvoiceFormValues>({
+    resolver: zodResolver(invoiceSchema),
+    defaultValues: existingInvoice
+      ? {
+          customer_id: existingInvoice.customer_id,
+          invoice_number: existingInvoice.invoice_number,
+          type: existingInvoice.type,
+          issue_date: existingInvoice.issue_date,
+          due_date: existingInvoice.due_date,
+          currency: existingInvoice.currency,
+          tax_rate: existingInvoice.tax_rate,
+          tax_label: existingInvoice.tax_label,
+          discount_type: existingInvoice.discount_type,
+          discount_value: existingInvoice.discount_value,
+          notes: existingInvoice.notes,
+          terms: existingInvoice.terms,
+          payment_link_url: existingInvoice.payment_link_url,
+          items: existingInvoice.items?.map((i, idx) => ({
+            id: i.id,
+            description: i.description,
+            quantity: i.quantity,
+            unit_price: i.unit_price,
+            amount: i.amount,
+            sort_order: idx,
+          })) ?? [{ description: '', quantity: 1, unit_price: 0, amount: 0, sort_order: 0 }],
+          recurring_frequency: existingInvoice.recurring_frequency,
+          recurring_start_date: existingInvoice.recurring_start_date,
+          recurring_end_date: existingInvoice.recurring_end_date,
+          recurring_auto_send: existingInvoice.recurring_auto_send,
+        }
+      : {
+          customer_id: preselectedCustomerId ?? null,
+          invoice_number: nextInvoiceNumber,
+          type: 'one-time',
+          issue_date: today,
+          due_date: defaultDue,
+          currency: organization?.default_currency ?? 'USD',
+          tax_rate: organization?.default_tax_rate ?? null,
+          tax_label: organization?.default_tax_label ?? 'Tax',
+          discount_type: null,
+          discount_value: null,
+          notes: organization?.default_notes ?? null,
+          terms: organization?.default_terms ?? null,
+          payment_link_url: null,
+          items: [{ description: '', quantity: 1, unit_price: 0, amount: 0, sort_order: 0 }],
+          recurring_frequency: null,
+          recurring_start_date: null,
+          recurring_end_date: null,
+          recurring_auto_send: false,
+        },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'items',
+  });
+
+  const watchedValues = useWatch({ control: form.control });
+
+  // Auto-calculate amounts when qty/price change
+  useEffect(() => {
+    const items = form.getValues('items');
+    items.forEach((item, idx) => {
+      const computed = item.quantity * item.unit_price;
+      if (Math.abs(computed - item.amount) > 0.001) {
+        form.setValue(`items.${idx}.amount`, computed);
+      }
+    });
+  }, [watchedValues.items, form]);
+
+  async function handleSave(status: 'draft' | 'pending') {
+    const valid = await form.trigger();
+    if (!valid) return;
+
+    const values = form.getValues();
+
+    try {
+      const result = isEdit
+        ? await updateInvoice(existingInvoice.id, { ...values, status } as Partial<InvoiceFormData>)
+        : await createInvoice({ ...values, status } as InvoiceFormData);
+
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success(isEdit ? 'Invoice updated' : status === 'draft' ? 'Draft saved' : 'Invoice created');
+      router.push('/');
+    } catch {
+      toast.error('Something went wrong. Please try again.');
+    }
+  }
+
+  const formValues = watchedValues as InvoiceFormValues;
+
+  return (
+    <div className="flex flex-col h-screen overflow-hidden">
+      {/* Top bar */}
+      <div className="flex items-center justify-between h-14 px-4 border-b border-border bg-background shrink-0">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => handleSave('draft')}>
+            Save draft
+          </Button>
+          <Button size="sm" onClick={() => handleSave('pending')}>
+            {isEdit ? 'Update invoice' : 'Create invoice'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Split panel — stacks on <lg, side-by-side on lg+ */}
+      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden lg:overflow-hidden">
+        {/* Form (shown first on mobile) */}
+        <div className="flex-1 overflow-y-auto order-1 lg:order-2">
+          <div className="max-w-2xl mx-auto px-6 py-6 space-y-6">
+
+            {/* 1. Customer */}
+            <section>
+              <h2 className="text-sm font-semibold text-text-primary mb-3">Customer</h2>
+              <CustomerSelector
+                customers={customers}
+                value={form.watch('customer_id')}
+                onChange={(id, customer) => {
+                  form.setValue('customer_id', id);
+                  setSelectedCustomer(customer);
+                  // Auto-set due date from customer payment terms
+                  if (customer?.payment_terms != null) {
+                    const due = format(
+                      addDays(new Date(), customer.payment_terms),
+                      'yyyy-MM-dd',
+                    );
+                    form.setValue('due_date', due);
+                  }
+                }}
+              />
+            </section>
+
+            <Separator />
+
+            {/* 2. Invoice details */}
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-semibold text-text-primary">Invoice details</h2>
+                {/* One-time / Recurring toggle */}
+                <div className="flex items-center rounded-md border border-border bg-secondary p-0.5 gap-0.5">
+                  {(['one-time', 'recurring'] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => form.setValue('type', t)}
+                      className={cn(
+                        'px-3 h-7 rounded text-xs font-medium transition-colors capitalize',
+                        form.watch('type') === t
+                          ? 'bg-background text-text-primary shadow-sm'
+                          : 'text-text-tertiary hover:text-text-secondary',
+                      )}
+                    >
+                      {t === 'one-time' ? 'One-time' : 'Recurring'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="invoice_number">Invoice number</Label>
+                  <Input
+                    id="invoice_number"
+                    {...form.register('invoice_number')}
+                    className="font-mono"
+                  />
+                  {form.formState.errors.invoice_number && (
+                    <p className="text-xs text-destructive">
+                      {form.formState.errors.invoice_number.message}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Currency</Label>
+                  <Select
+                    value={form.watch('currency')}
+                    onValueChange={(v) => form.setValue('currency', v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CURRENCIES.map((c) => (
+                        <SelectItem key={c.code} value={c.code}>
+                          {c.code} — {c.symbol}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="issue_date">Issue date</Label>
+                  <DatePicker
+                    id="issue_date"
+                    value={form.watch('issue_date')}
+                    onChange={(v) => form.setValue('issue_date', v, { shouldValidate: true })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="due_date">Due date</Label>
+                  <DatePicker
+                    id="due_date"
+                    value={form.watch('due_date')}
+                    onChange={(v) => form.setValue('due_date', v, { shouldValidate: true })}
+                  />
+                  {form.formState.errors.due_date && (
+                    <p className="text-xs text-destructive">
+                      {form.formState.errors.due_date.message}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Payment terms</Label>
+                  <Select
+                    onValueChange={(days) => {
+                      const due = format(addDays(new Date(), parseInt(days)), 'yyyy-MM-dd');
+                      form.setValue('due_date', due);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Set due date" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_TERMS_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value.toString()}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Recurring options */}
+              {form.watch('type') === 'recurring' && (
+                <div className="mt-4 rounded-lg border border-border bg-secondary/40 p-4 space-y-4">
+                  <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
+                    Recurring schedule
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Frequency</Label>
+                      <Select
+                        value={form.watch('recurring_frequency') ?? ''}
+                        onValueChange={(v) =>
+                          form.setValue(
+                            'recurring_frequency',
+                            v as 'weekly' | 'monthly' | 'quarterly' | 'yearly',
+                          )
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select frequency" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="quarterly">Quarterly</SelectItem>
+                          <SelectItem value="yearly">Yearly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div /> {/* spacer */}
+                    <div className="space-y-1.5">
+                      <Label>Start date</Label>
+                      <DatePicker
+                        value={form.watch('recurring_start_date')}
+                        onChange={(v) => form.setValue('recurring_start_date', v)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>
+                        End date{' '}
+                        <span className="text-text-tertiary font-normal">(optional)</span>
+                      </Label>
+                      <DatePicker
+                        value={form.watch('recurring_end_date')}
+                        onChange={(v) => form.setValue('recurring_end_date', v)}
+                        placeholder="No end date"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-text-primary">Auto-send</p>
+                      <p className="text-xs text-text-tertiary">
+                        Automatically send invoices on schedule
+                      </p>
+                    </div>
+                    <Switch
+                      checked={form.watch('recurring_auto_send')}
+                      onCheckedChange={(v) => form.setValue('recurring_auto_send', v)}
+                    />
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <Separator />
+
+            {/* 3. Line items */}
+            <section>
+              <h2 className="text-sm font-semibold text-text-primary mb-3">Line items</h2>
+
+              <div className="space-y-2">
+                {/* Header row */}
+                <div className="grid grid-cols-12 gap-2 px-7">
+                  <span className="col-span-5 text-xs text-text-tertiary">Description</span>
+                  <span className="col-span-2 text-xs text-text-tertiary">Qty</span>
+                  <span className="col-span-3 text-xs text-text-tertiary">Unit price</span>
+                  <span className="col-span-2 text-xs text-text-tertiary text-right">Amount</span>
+                </div>
+
+                {fields.map((field, idx) => {
+                  const qty = form.watch(`items.${idx}.quantity`) ?? 0;
+                  const price = form.watch(`items.${idx}.unit_price`) ?? 0;
+                  const amount = qty * price;
+
+                  return (
+                    <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
+                      <div className="flex items-center justify-center pt-2.5 text-text-tertiary">
+                        <GripVertical className="w-4 h-4" />
+                      </div>
+                      <div className="col-span-5 space-y-0">
+                        <Input
+                          placeholder="Item description"
+                          {...form.register(`items.${idx}.description`)}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="1"
+                          {...form.register(`items.${idx}.quantity`, { valueAsNumber: true })}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="col-span-3">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          {...form.register(`items.${idx}.unit_price`, { valueAsNumber: true })}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="col-span-1 flex items-center justify-end gap-1 pt-2">
+                        <span className="text-sm tabular-nums text-text-secondary">
+                          {new Intl.NumberFormat('en-US', {
+                            minimumFractionDigits: 2,
+                          }).format(amount)}
+                        </span>
+                        {fields.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => remove(idx)}
+                            className="text-text-tertiary hover:text-destructive transition-colors ml-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="mt-3 text-text-secondary"
+                onClick={() =>
+                  append({
+                    description: '',
+                    quantity: 1,
+                    unit_price: 0,
+                    amount: 0,
+                    sort_order: fields.length,
+                  })
+                }
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                Add line item
+              </Button>
+            </section>
+
+            <Separator />
+
+            {/* 4. Tax & discount */}
+            <section>
+              <h2 className="text-sm font-semibold text-text-primary mb-3">Tax & discount</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="tax_label">Tax label</Label>
+                  <Input
+                    id="tax_label"
+                    placeholder="Tax / VAT / GST"
+                    {...form.register('tax_label')}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="tax_rate">Tax rate (%)</Label>
+                  <Input
+                    id="tax_rate"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    placeholder="0"
+                    {...form.register('tax_rate', { valueAsNumber: true, setValueAs: (v: string) => v === '' ? null : parseFloat(v) })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Discount type</Label>
+                  <Select
+                    value={form.watch('discount_type') ?? ''}
+                    onValueChange={(v) =>
+                      form.setValue(
+                        'discount_type',
+                        (v as 'percentage' | 'flat') || null,
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="No discount" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percentage">Percentage (%)</SelectItem>
+                      <SelectItem value="flat">Flat amount</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {form.watch('discount_type') && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="discount_value">
+                      Discount value
+                      {form.watch('discount_type') === 'percentage' ? ' (%)' : ''}
+                    </Label>
+                    <Input
+                      id="discount_value"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0"
+                      {...form.register('discount_value', { valueAsNumber: true })}
+                    />
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <Separator />
+
+            {/* 5. Notes & terms */}
+            <section>
+              <h2 className="text-sm font-semibold text-text-primary mb-3">Notes & terms</h2>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="notes">Notes</Label>
+                  <Textarea
+                    id="notes"
+                    placeholder="Thank you for your business…"
+                    rows={3}
+                    {...form.register('notes')}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="terms">Terms & conditions</Label>
+                  <Textarea
+                    id="terms"
+                    placeholder="Payment due within 30 days of invoice date…"
+                    rows={3}
+                    {...form.register('terms')}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="payment_link_url">Custom payment link (optional)</Label>
+                  <Input
+                    id="payment_link_url"
+                    type="url"
+                    placeholder="https://pay.stripe.com/…"
+                    {...form.register('payment_link_url')}
+                  />
+                  <p className="text-xs text-text-tertiary">
+                    Overrides the payment link set in Settings for this invoice.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            <div className="pb-12" />
+          </div>
+        </div>
+
+        {/* Preview (right on lg+, bottom on mobile) */}
+        <div className="order-2 lg:order-1 lg:w-5/12 border-t lg:border-t-0 lg:border-r border-border bg-secondary/30 overflow-y-auto p-6">
+          <p className="text-xs font-medium text-text-tertiary uppercase tracking-wider mb-4">
+            Preview
+          </p>
+          <InvoicePreview
+            formValues={formValues}
+            organization={organization}
+            customer={selectedCustomer}
+            invoiceNumber={formValues.invoice_number ?? nextInvoiceNumber}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}

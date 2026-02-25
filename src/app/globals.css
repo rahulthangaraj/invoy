@@ -1,0 +1,186 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* ─── InvoiceFlow Design System ─────────────────────────────────────────── */
+
+:root {
+  /* Core surfaces */
+  --background: #fafafa;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+
+  /* Brand / primary (deep financial blue) */
+  --primary: #1a1a2e;
+  --primary-hover: #16213e;
+  --primary-subtle: #e8eaf6;
+  --primary-foreground: #ffffff;
+
+  /* Secondary / muted (surface secondary) */
+  --secondary: #f5f5f7;
+  --secondary-foreground: #0a0a0a;
+  --muted: #f5f5f7;
+  --muted-foreground: #525252;
+
+  /* Accent (maps to primary subtle for hover states) */
+  --accent: #e8eaf6;
+  --accent-foreground: #1a1a2e;
+
+  /* Destructive */
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  /* Borders & inputs */
+  --border: #e5e5e5;
+  --border-subtle: #f0f0f0;
+  --input: #e5e5e5;
+  --ring: #1a1a2e;
+
+  /* Text hierarchy */
+  --text-primary: #0a0a0a;
+  --text-secondary: #525252;
+  --text-tertiary: #a3a3a3;
+
+  /* Sidebar (always dark) */
+  --sidebar-bg: #0a0a0a;
+  --sidebar-text: #a3a3a3;
+  --sidebar-text-active: #ffffff;
+  --sidebar-hover: #171717;
+  --sidebar-active: #1a1a2e;
+
+  /* Status colors */
+  --status-paid-text: #059669;
+  --status-paid-bg: #ecfdf5;
+  --status-pending-text: #d97706;
+  --status-pending-bg: #fffbeb;
+  --status-overdue-text: #dc2626;
+  --status-overdue-bg: #fef2f2;
+  --status-draft-text: #737373;
+  --status-draft-bg: #f5f5f5;
+  --status-scheduled-text: #4f46e5;
+  --status-scheduled-bg: #eef2ff;
+  --status-cancelled-text: #737373;
+  --status-cancelled-bg: #f5f5f5;
+
+  /* Radius */
+  --radius: 0.5rem;
+}
+
+@theme inline {
+  /* Shadcn required mappings */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Extended design tokens */
+  --color-surface: var(--card);
+  --color-surface-secondary: var(--secondary);
+  --color-border-subtle: var(--border-subtle);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-subtle: var(--primary-subtle);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-text: var(--sidebar-text);
+  --color-sidebar-text-active: var(--sidebar-text-active);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active: var(--sidebar-active);
+
+  /* Status colors */
+  --color-status-paid-text: var(--status-paid-text);
+  --color-status-paid-bg: var(--status-paid-bg);
+  --color-status-pending-text: var(--status-pending-text);
+  --color-status-pending-bg: var(--status-pending-bg);
+  --color-status-overdue-text: var(--status-overdue-text);
+  --color-status-overdue-bg: var(--status-overdue-bg);
+  --color-status-draft-text: var(--status-draft-text);
+  --color-status-draft-bg: var(--status-draft-bg);
+  --color-status-scheduled-text: var(--status-scheduled-text);
+  --color-status-scheduled-bg: var(--status-scheduled-bg);
+  --color-status-cancelled-text: var(--status-cancelled-text);
+  --color-status-cancelled-bg: var(--status-cancelled-bg);
+
+  /* Fonts */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Border radius */
+  --radius-sm: 0.375rem;
+  --radius-md: var(--radius);
+  --radius-lg: 0.75rem;
+  --radius-full: 9999px;
+}
+
+/* ─── Base styles ────────────────────────────────────────────────────────── */
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans, system-ui, sans-serif);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tabular numbers on all monetary/numeric content */
+.tabular-nums {
+  font-feature-settings: 'tnum';
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* ─── Skeleton shimmer ───────────────────────────────────────────────────── */
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--secondary) 25%,
+    var(--border) 50%,
+    var(--secondary) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
