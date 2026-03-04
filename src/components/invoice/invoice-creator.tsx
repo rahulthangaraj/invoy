@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Trash2, ArrowLeft, GripVertical } from 'lucide-react';
+import { Plus, Trash2, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { addDays, format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -48,6 +48,10 @@ export function InvoiceCreator({
 }: InvoiceCreatorProps) {
   const router = useRouter();
   const isEdit = !!existingInvoice;
+  const [saving, setSaving] = useState<'draft' | 'pending' | 'send' | null>(null);
+  const [customerError, setCustomerError] = useState<string | null>(null);
+  const [sendEmailError, setSendEmailError] = useState<string | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   const today = format(new Date(), 'yyyy-MM-dd');
   const defaultTerms = organization?.default_payment_terms ?? 30;
@@ -59,11 +63,14 @@ export function InvoiceCreator({
       : existingInvoice?.customer ?? null,
   );
 
+  // Keep customers list updated when a new customer is created inline
+  const [allCustomers, setAllCustomers] = useState(customers);
+
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceSchema),
     defaultValues: existingInvoice
       ? {
-          customer_id: existingInvoice.customer_id,
+          customer_id: existingInvoice.customer_id ?? '',
           invoice_number: existingInvoice.invoice_number,
           type: existingInvoice.type,
           issue_date: existingInvoice.issue_date,
@@ -90,7 +97,7 @@ export function InvoiceCreator({
           recurring_auto_send: existingInvoice.recurring_auto_send,
         }
       : {
-          customer_id: preselectedCustomerId ?? null,
+          customer_id: preselectedCustomerId ?? '',
           invoice_number: nextInvoiceNumber,
           type: 'one-time',
           issue_date: today,
@@ -129,11 +136,47 @@ export function InvoiceCreator({
     });
   }, [watchedValues.items, form]);
 
-  async function handleSave(status: 'draft' | 'pending') {
+  function scrollToFirstError() {
+    // Small delay to let error elements render
+    setTimeout(() => {
+      const firstError = formRef.current?.querySelector('[data-error="true"]');
+      if (firstError) {
+        firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 50);
+  }
+
+  async function handleSave(status: 'draft' | 'pending', sendAfter = false) {
+    // Clear custom errors before re-validating
+    setCustomerError(null);
+    setSendEmailError(null);
+
+    // Run zod validation
     const valid = await form.trigger();
-    if (!valid) return;
+
+    // Custom validation: customer must be selected
+    const customerId = form.getValues('customer_id');
+    let hasCustomError = false;
+    if (!customerId) {
+      setCustomerError('Please select a customer');
+      hasCustomError = true;
+    }
+
+    // For "Create & Send", check customer email
+    if (sendAfter && selectedCustomer && !selectedCustomer.email) {
+      setSendEmailError(
+        'Selected customer has no email address. Add an email in customer settings to send invoices.',
+      );
+      hasCustomError = true;
+    }
+
+    if (!valid || hasCustomError) {
+      scrollToFirstError();
+      return;
+    }
 
     const values = form.getValues();
+    setSaving(sendAfter ? 'send' : status);
 
     try {
       const result = isEdit
@@ -142,64 +185,97 @@ export function InvoiceCreator({
 
       if (result.error) {
         toast.error(result.error);
+        setSaving(null);
         return;
       }
 
-      toast.success(isEdit ? 'Invoice updated' : status === 'draft' ? 'Draft saved' : 'Invoice created');
+      // If sendAfter, also send the invoice email
+      if (sendAfter && result.data) {
+        try {
+          const res = await fetch(`/api/invoices/${result.data.id}/send`, { method: 'POST' });
+          const data = (await res.json()) as { error?: string };
+          if (data.error) {
+            toast.error(`Invoice created but failed to send: ${data.error}`);
+          } else {
+            toast.success('Invoice created and sent');
+          }
+        } catch {
+          toast.error('Invoice created but failed to send');
+        }
+      } else {
+        toast.success(isEdit ? 'Invoice updated' : status === 'draft' ? 'Draft saved' : 'Invoice created');
+      }
+
       router.push('/');
     } catch {
       toast.error('Something went wrong. Please try again.');
+      setSaving(null);
     }
+  }
+
+  function handleNewCustomerCreated(customer: Customer) {
+    setAllCustomers((prev) => [...prev, customer]);
+    setSelectedCustomer(customer);
+    form.setValue('customer_id', customer.id);
+    setCustomerError(null);
+    setSendEmailError(null);
   }
 
   const formValues = watchedValues as InvoiceFormValues;
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      {/* Top bar */}
-      <div className="flex items-center justify-between h-14 px-4 border-b border-border bg-background shrink-0">
+      {/* Top bar — title left, close right */}
+      <div className="flex items-center justify-between h-14 px-6 border-b border-border bg-background shrink-0">
+        <h1 className="text-base font-semibold text-text-primary">
+          {isEdit ? 'Edit Invoice' : 'New Invoice'}
+        </h1>
         <button
-          onClick={() => router.back()}
-          className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
+          onClick={() => router.push('/')}
+          className="flex items-center justify-center w-8 h-8 rounded-md text-text-tertiary hover:text-text-primary hover:bg-[#f3f4f6] transition-colors"
+          aria-label="Close"
         >
-          <ArrowLeft className="w-4 h-4" />
-          Back
+          <X className="w-5 h-5" />
         </button>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => handleSave('draft')}>
-            Save draft
-          </Button>
-          <Button size="sm" onClick={() => handleSave('pending')}>
-            {isEdit ? 'Update invoice' : 'Create invoice'}
-          </Button>
-        </div>
       </div>
 
-      {/* Split panel — stacks on <lg, side-by-side on lg+ */}
-      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden lg:overflow-hidden">
-        {/* Form (shown first on mobile) */}
-        <div className="flex-1 overflow-y-auto order-1 lg:order-2">
+      {/* Split panel — form LEFT, preview RIGHT */}
+      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
+        {/* Form (left on lg+, first on mobile) */}
+        <div className="flex-1 overflow-y-auto pb-20" ref={formRef}>
           <div className="max-w-2xl mx-auto px-6 py-6 space-y-6">
 
             {/* 1. Customer */}
             <section>
-              <h2 className="text-sm font-semibold text-text-primary mb-3">Customer</h2>
-              <CustomerSelector
-                customers={customers}
-                value={form.watch('customer_id')}
-                onChange={(id, customer) => {
-                  form.setValue('customer_id', id);
-                  setSelectedCustomer(customer);
-                  // Auto-set due date from customer payment terms
-                  if (customer?.payment_terms != null) {
-                    const due = format(
-                      addDays(new Date(), customer.payment_terms),
-                      'yyyy-MM-dd',
-                    );
-                    form.setValue('due_date', due);
-                  }
-                }}
-              />
+              <h2 className="text-[15px] font-semibold text-text-primary mb-4">Customer</h2>
+              <div data-error={!!customerError || !!form.formState.errors.customer_id || !!sendEmailError || undefined}>
+                <CustomerSelector
+                  customers={allCustomers}
+                  value={form.watch('customer_id') || null}
+                  onChange={(id, customer) => {
+                    form.setValue('customer_id', id ?? '', { shouldValidate: true });
+                    setSelectedCustomer(customer);
+                    setCustomerError(null);
+                    setSendEmailError(null);
+                    if (customer?.payment_terms != null) {
+                      const due = format(
+                        addDays(new Date(), customer.payment_terms),
+                        'yyyy-MM-dd',
+                      );
+                      form.setValue('due_date', due);
+                    }
+                  }}
+                  onNewCustomerCreated={handleNewCustomerCreated}
+                />
+                {(customerError || form.formState.errors.customer_id) && (
+                  <p className="text-xs text-destructive mt-1.5">
+                    {customerError || form.formState.errors.customer_id?.message}
+                  </p>
+                )}
+                {sendEmailError && (
+                  <p className="text-xs text-destructive mt-1.5">{sendEmailError}</p>
+                )}
+              </div>
             </section>
 
             <Separator />
@@ -207,8 +283,7 @@ export function InvoiceCreator({
             {/* 2. Invoice details */}
             <section>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-text-primary">Invoice details</h2>
-                {/* One-time / Recurring toggle */}
+                <h2 className="text-base font-semibold text-text-primary">Invoice details</h2>
                 <div className="flex items-center rounded-md border border-border bg-secondary p-0.5 gap-0.5">
                   {(['one-time', 'recurring'] as const).map((t) => (
                     <button
@@ -236,7 +311,7 @@ export function InvoiceCreator({
                     className="font-mono"
                   />
                   {form.formState.errors.invoice_number && (
-                    <p className="text-xs text-destructive">
+                    <p className="text-xs text-destructive" data-error="true">
                       {form.formState.errors.invoice_number.message}
                     </p>
                   )}
@@ -267,7 +342,7 @@ export function InvoiceCreator({
                     onChange={(v) => form.setValue('issue_date', v, { shouldValidate: true })}
                   />
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1.5" data-error={!!form.formState.errors.due_date || undefined}>
                   <Label htmlFor="due_date">Due date</Label>
                   <DatePicker
                     id="due_date"
@@ -371,35 +446,36 @@ export function InvoiceCreator({
 
             {/* 3. Line items */}
             <section>
-              <h2 className="text-sm font-semibold text-text-primary mb-3">Line items</h2>
+              <h2 className="text-[15px] font-semibold text-text-primary mb-4">Line items</h2>
 
               <div className="space-y-2">
                 {/* Header row */}
-                <div className="grid grid-cols-12 gap-2 px-7">
-                  <span className="col-span-5 text-xs text-text-tertiary">Description</span>
-                  <span className="col-span-2 text-xs text-text-tertiary">Qty</span>
-                  <span className="col-span-3 text-xs text-text-tertiary">Unit price</span>
-                  <span className="col-span-2 text-xs text-text-tertiary text-right">Amount</span>
+                <div className="grid gap-2 items-center" style={{ gridTemplateColumns: '1fr 80px 100px 80px 40px' }}>
+                  <span className="text-xs font-medium text-text-tertiary">Description</span>
+                  <span className="text-xs font-medium text-text-tertiary">Qty</span>
+                  <span className="text-xs font-medium text-text-tertiary">Unit price</span>
+                  <span className="text-xs font-medium text-text-tertiary text-right">Amount</span>
+                  <span />
                 </div>
 
                 {fields.map((field, idx) => {
                   const qty = form.watch(`items.${idx}.quantity`) ?? 0;
                   const price = form.watch(`items.${idx}.unit_price`) ?? 0;
                   const amount = qty * price;
+                  const itemErrors = form.formState.errors.items?.[idx];
 
                   return (
-                    <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
-                      <div className="flex items-center justify-center pt-2.5 text-text-tertiary">
-                        <GripVertical className="w-4 h-4" />
-                      </div>
-                      <div className="col-span-5 space-y-0">
+                    <div key={field.id}>
+                      <div
+                        className="grid gap-2 items-center"
+                        style={{ gridTemplateColumns: '1fr 80px 100px 80px 40px' }}
+                        data-error={!!itemErrors || undefined}
+                      >
                         <Input
                           placeholder="Item description"
                           {...form.register(`items.${idx}.description`)}
-                          className="h-9 text-sm"
+                          className={cn('h-9 text-sm', itemErrors?.description && 'border-destructive')}
                         />
-                      </div>
-                      <div className="col-span-2">
                         <Input
                           type="number"
                           step="0.01"
@@ -408,37 +484,51 @@ export function InvoiceCreator({
                           {...form.register(`items.${idx}.quantity`, { valueAsNumber: true })}
                           className="h-9 text-sm"
                         />
-                      </div>
-                      <div className="col-span-3">
                         <Input
                           type="number"
                           step="0.01"
                           min="0"
                           placeholder="0.00"
                           {...form.register(`items.${idx}.unit_price`, { valueAsNumber: true })}
-                          className="h-9 text-sm"
+                          className={cn('h-9 text-sm', itemErrors?.unit_price && 'border-destructive')}
                         />
-                      </div>
-                      <div className="col-span-1 flex items-center justify-end gap-1 pt-2">
-                        <span className="text-sm tabular-nums text-text-secondary">
+                        <span className="text-sm tabular-nums text-text-secondary text-right">
                           {new Intl.NumberFormat('en-US', {
                             minimumFractionDigits: 2,
                           }).format(amount)}
                         </span>
-                        {fields.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => remove(idx)}
-                            className="text-text-tertiary hover:text-destructive transition-colors ml-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+                        <div className="flex items-center justify-center">
+                          {fields.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => remove(idx)}
+                              className="text-text-tertiary hover:text-destructive transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
+                      {itemErrors && (
+                        <div className="mt-1 space-y-0.5">
+                          {itemErrors.description && (
+                            <p className="text-xs text-destructive">{itemErrors.description.message}</p>
+                          )}
+                          {itemErrors.unit_price && (
+                            <p className="text-xs text-destructive">{itemErrors.unit_price.message}</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
+
+              {form.formState.errors.items?.message && (
+                <p className="text-xs text-destructive mt-2" data-error="true">
+                  {form.formState.errors.items.message}
+                </p>
+              )}
 
               <Button
                 type="button"
@@ -464,7 +554,7 @@ export function InvoiceCreator({
 
             {/* 4. Tax & discount */}
             <section>
-              <h2 className="text-sm font-semibold text-text-primary mb-3">Tax & discount</h2>
+              <h2 className="text-[15px] font-semibold text-text-primary mb-4">Tax & discount</h2>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="tax_label">Tax label</Label>
@@ -529,7 +619,7 @@ export function InvoiceCreator({
 
             {/* 5. Notes & terms */}
             <section>
-              <h2 className="text-sm font-semibold text-text-primary mb-3">Notes & terms</h2>
+              <h2 className="text-[15px] font-semibold text-text-primary mb-4">Notes & terms</h2>
               <div className="space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="notes">Notes</Label>
@@ -564,12 +654,11 @@ export function InvoiceCreator({
               </div>
             </section>
 
-            <div className="pb-12" />
           </div>
         </div>
 
         {/* Preview (right on lg+, bottom on mobile) */}
-        <div className="order-2 lg:order-1 lg:w-5/12 border-t lg:border-t-0 lg:border-r border-border bg-secondary/30 overflow-y-auto p-6">
+        <div className="lg:w-5/12 border-t lg:border-t-0 lg:border-l border-border bg-[#f9fafb] overflow-y-auto p-6 pb-20">
           <p className="text-xs font-medium text-text-tertiary uppercase tracking-wider mb-4">
             Preview
           </p>
@@ -580,6 +669,27 @@ export function InvoiceCreator({
             invoiceNumber={formValues.invoice_number ?? nextInvoiceNumber}
           />
         </div>
+      </div>
+
+      {/* Fixed bottom bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-end gap-2 h-16 px-6 border-t border-border bg-background">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleSave('draft')}
+          disabled={saving !== null}
+        >
+          {saving === 'draft' && <Loader2 className="w-4 h-4 animate-spin" />}
+          Save as Draft
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => handleSave('pending', !isEdit)}
+          disabled={saving !== null}
+        >
+          {(saving === 'pending' || saving === 'send') && <Loader2 className="w-4 h-4 animate-spin" />}
+          {isEdit ? 'Update Invoice' : 'Create & Send'}
+        </Button>
       </div>
     </div>
   );

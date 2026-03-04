@@ -15,15 +15,12 @@ export function SummaryCard({
   amount,
   currency = 'USD',
   subtext,
-  accentColor = 'none',
   className,
 }: SummaryCardProps) {
   return (
     <div
       className={cn(
-        'bg-surface rounded-lg border border-border p-5',
-        accentColor === 'red' && 'border-t-2 border-t-status-overdue-text',
-        accentColor === 'green' && 'border-t-2 border-t-status-paid-text',
+        'bg-white rounded-lg border border-border p-5',
         className,
       )}
     >
@@ -31,7 +28,7 @@ export function SummaryCard({
       <CurrencyDisplay
         amount={amount}
         currency={currency}
-        className="text-3xl font-bold text-text-primary"
+        className="text-2xl font-semibold text-text-primary"
       />
       {subtext && <p className="text-xs text-text-tertiary mt-1">{subtext}</p>}
     </div>

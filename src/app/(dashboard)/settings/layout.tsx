@@ -1,32 +1,46 @@
-import Link from 'next/link';
-import { type ReactNode } from 'react';
-import { PageHeader } from '@/components/composed/page-header';
+import { Suspense, type ReactNode } from 'react';
+import { getOrganization } from '@/lib/queries/organization-queries';
+import { SettingsNav } from './settings-nav';
 
-const settingsTabs = [
-  { href: '/settings/profile', label: 'Company profile' },
-  { href: '/settings/invoice', label: 'Invoice defaults' },
-  { href: '/settings/payment', label: 'Payment' },
-];
+export default async function SettingsLayout({ children }: { children: ReactNode }) {
+  // Fetch org once in the layout — child pages can still call getOrganization()
+  // but Next.js will deduplicate within the same render pass
+  void getOrganization();
 
-export default function SettingsLayout({ children }: { children: ReactNode }) {
   return (
     <div>
-      <PageHeader title="Settings" description="Manage your account and invoice defaults." />
-
-      {/* Tab navigation */}
-      <div className="flex gap-0 border-b border-border px-6">
-        {settingsTabs.map((tab) => (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            className="px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-text-primary border-b-2 border-transparent hover:border-border transition-colors -mb-px"
-          >
-            {tab.label}
-          </Link>
-        ))}
+      <div className="px-6 py-5 border-b border-border">
+        <h1 className="text-xl font-semibold text-text-primary tracking-tight">Settings</h1>
+        <p className="text-sm text-text-secondary mt-0.5">Manage your account and invoice defaults.</p>
       </div>
 
-      <div className="px-6 py-6 max-w-2xl">{children}</div>
+      <SettingsNav />
+
+      <div className="px-6 py-6 max-w-2xl">
+        <Suspense fallback={<SettingsFormSkeleton />}>
+          {children}
+        </Suspense>
+      </div>
+    </div>
+  );
+}
+
+function SettingsFormSkeleton() {
+  return (
+    <div className="space-y-6">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="space-y-3">
+          <div className="skeleton-shimmer h-5 w-36" />
+          <div className="grid grid-cols-2 gap-4">
+            {Array.from({ length: 4 }).map((_, j) => (
+              <div key={j} className="space-y-1.5">
+                <div className="skeleton-shimmer h-3.5 w-24" />
+                <div className="skeleton-shimmer h-9 w-full rounded-md" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

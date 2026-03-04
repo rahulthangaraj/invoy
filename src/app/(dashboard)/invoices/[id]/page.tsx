@@ -1,15 +1,14 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Pencil, Send, CheckCircle, Download } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { getInvoiceById } from '@/lib/queries/invoice-queries';
 import { getOrganization } from '@/lib/queries/organization-queries';
-import { PageHeader } from '@/components/composed/page-header';
 import { StatusBadge } from '@/components/composed/status-badge';
 import { CurrencyDisplay } from '@/components/composed/currency-display';
-import { Button } from '@/components/ui/button';
 import { InvoiceActions } from '@/components/invoice/invoice-actions';
+import { InvoicePdfButton } from '@/components/invoice/invoice-pdf-button';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -26,13 +25,27 @@ export default async function InvoiceDetailPage({ params }: Props) {
 
   return (
     <div>
-      <PageHeader
-        title={invoice.invoice_number}
-        description={invoice.customer?.company_name ?? invoice.customer?.name ?? 'No customer'}
-        actions={
+      {/* Back nav + actions */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center gap-4">
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Invoices
+          </Link>
+          <div className="h-5 w-px bg-border" />
+          <div>
+            <h1 className="text-lg font-semibold text-text-primary tracking-tight">{invoice.invoice_number}</h1>
+            <p className="text-sm text-text-secondary">{invoice.customer?.company_name ?? invoice.customer?.name ?? 'No customer'}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <InvoicePdfButton invoice={invoice} organization={organization} />
           <InvoiceActions invoice={invoice} />
-        }
-      />
+        </div>
+      </div>
 
       <div className="px-6 py-5 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Invoice summary */}

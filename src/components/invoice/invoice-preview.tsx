@@ -48,7 +48,7 @@ export function InvoicePreview({
   const fmt = (n: number) =>
     `${symbol}${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2 }).format(n)}`;
 
-  const brandColor = organization?.brand_color ?? '#1a1a2e';
+  const brandColor = organization?.brand_color ?? '#2563eb';
 
   return (
     <div className="bg-white rounded-lg border border-border shadow-sm p-8 min-h-full text-[13px] font-sans text-[#111]">

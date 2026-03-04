@@ -77,7 +77,7 @@ export default async function DashboardPage() {
             action={{ label: 'Create invoice', href: '/invoices/new' }}
           />
         ) : (
-          <InvoiceTable invoices={invoices} currency={currency} />
+          <InvoiceTable invoices={invoices} currency={currency} organization={org} />
         )}
       </div>
     </div>

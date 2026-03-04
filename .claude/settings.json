@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm type-check)",
+      "Bash(pnpm build)",
+      "Bash(pnpm add tw-animate-css)"
+    ],
+    "additionalDirectories": [
+      "/Users/rahulthangaraj/invoy/src/app/invoice/[publicId]",
+      "/Users/rahulthangaraj/.claude/projects/-Users-rahulthangaraj-invoy"
+    ]
+  }
+}

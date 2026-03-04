@@ -29,7 +29,7 @@ export default async function PublicInvoicePage({ params }: Props) {
   if (!invoice) notFound();
 
   const organization = await getOrganizationForInvoice(invoice.organization_id);
-  const brandColor = organization?.brand_color ?? '#1a1a2e';
+  const brandColor = organization?.brand_color ?? '#2563eb';
   const symbol = CURRENCY_SYMBOLS[invoice.currency] ?? invoice.currency;
   const fmt = (n: number) =>
     `${symbol}${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2 }).format(n)}`;

@@ -4,7 +4,7 @@ import { useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Upload, X } from 'lucide-react';
+import { Upload, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 
 import { companyProfileSchema } from '@/lib/validations/organization-schema';
@@ -25,7 +25,7 @@ export function CompanyProfileForm({ organization }: { organization: Organizatio
     handleSubmit,
     watch,
     setValue,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<FormData>({
     resolver: zodResolver(companyProfileSchema),
     defaultValues: {
@@ -40,7 +40,7 @@ export function CompanyProfileForm({ organization }: { organization: Organizatio
       country: organization?.country ?? '',
       tax_id: organization?.tax_id ?? '',
       website: organization?.website ?? '',
-      brand_color: organization?.brand_color ?? '#1a1a2e',
+      brand_color: organization?.brand_color ?? '#2563eb',
     },
   });
 
@@ -78,7 +78,8 @@ export function CompanyProfileForm({ organization }: { organization: Organizatio
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {/* Logo */}
       <div>
-        <h3 className="text-sm font-semibold text-text-primary mb-3">Logo & branding</h3>
+        <h3 className="text-[15px] font-semibold text-text-primary mb-1">Logo & branding</h3>
+        <p className="text-xs text-text-tertiary mb-3">Your brand identity on invoices</p>
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-lg border border-border flex items-center justify-center overflow-hidden bg-secondary">
             {organization?.logo_url ? (
@@ -129,7 +130,7 @@ export function CompanyProfileForm({ organization }: { organization: Organizatio
             <Input
               id="brand_color"
               {...register('brand_color')}
-              placeholder="#1a1a2e"
+              placeholder="#2563eb"
               className="font-mono w-32"
             />
           </div>
@@ -141,7 +142,8 @@ export function CompanyProfileForm({ organization }: { organization: Organizatio
 
       {/* Business info */}
       <div>
-        <h3 className="text-sm font-semibold text-text-primary mb-3">Business information</h3>
+        <h3 className="text-[15px] font-semibold text-text-primary mb-1">Business information</h3>
+        <p className="text-xs text-text-tertiary mb-3">Shown on your invoices</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="name">Business name *</Label>
@@ -170,7 +172,8 @@ export function CompanyProfileForm({ organization }: { organization: Organizatio
 
       {/* Address */}
       <div>
-        <h3 className="text-sm font-semibold text-text-primary mb-3">Address</h3>
+        <h3 className="text-[15px] font-semibold text-text-primary mb-1">Address</h3>
+        <p className="text-xs text-text-tertiary mb-3">Your business address</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2 space-y-1.5">
             <Label htmlFor="address_line1">Address line 1</Label>
@@ -199,9 +202,13 @@ export function CompanyProfileForm({ organization }: { organization: Organizatio
         </div>
       </div>
 
-      <Button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? 'Saving…' : 'Save changes'}
-      </Button>
+      {/* Fixed bottom CTA */}
+      <div className="sticky bottom-0 bg-background border-t border-border py-3 -mx-0 mt-6 flex items-center justify-end">
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+          {isSubmitting ? 'Saving…' : 'Save changes'}
+        </Button>
+      </div>
     </form>
   );
 }

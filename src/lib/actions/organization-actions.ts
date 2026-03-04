@@ -77,7 +77,12 @@ export async function uploadLogo(file: File): Promise<ApiResponse<string>> {
     .from('logos')
     .upload(path, file, { upsert: true });
 
-  if (uploadError) return { data: null, error: uploadError.message };
+  if (uploadError) {
+    const msg = uploadError.message.includes('not found')
+      ? 'Storage bucket "logos" not found. Please create a public bucket named "logos" in Supabase Storage.'
+      : uploadError.message;
+    return { data: null, error: msg };
+  }
 
   const { data: urlData } = supabase.storage.from('logos').getPublicUrl(path);
   const logoUrl = urlData.publicUrl;

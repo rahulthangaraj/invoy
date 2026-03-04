@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 import { customerSchema, type CustomerFormData } from '@/lib/validations/customer-schema';
 import { type z } from 'zod';
@@ -27,9 +28,10 @@ import {
 interface CustomerFormProps {
   customer?: Customer;
   onSuccess?: (customer: Customer) => void;
+  modal?: boolean;
 }
 
-export function CustomerForm({ customer, onSuccess }: CustomerFormProps) {
+export function CustomerForm({ customer, onSuccess, modal }: CustomerFormProps) {
   const router = useRouter();
   const isEdit = !!customer;
 
@@ -45,7 +47,7 @@ export function CustomerForm({ customer, onSuccess }: CustomerFormProps) {
           name: customer.name,
           email: customer.email,
           phone: customer.phone,
-          company_name: customer.company_name,
+          company_name: customer.company_name ?? '',
           address_line1: customer.address_line1,
           address_line2: customer.address_line2,
           city: customer.city,
@@ -57,7 +59,7 @@ export function CustomerForm({ customer, onSuccess }: CustomerFormProps) {
           payment_terms: customer.payment_terms,
           notes: customer.notes,
         }
-      : { name: '', email: '' },
+      : { name: '', email: '', company_name: '' },
   });
 
   async function onSubmit(data: CustomerFormData) {
@@ -83,129 +85,143 @@ export function CustomerForm({ customer, onSuccess }: CustomerFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      {/* Basic info */}
-      <div>
-        <h3 className="text-sm font-semibold text-text-primary mb-3">Basic information</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="name">Full name *</Label>
-            <Input id="name" {...register('name')} placeholder="Jane Doe" />
-            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full">
+      <div className="flex-1 space-y-6">
+        {/* Basic info */}
+        <div>
+          <h3 className="text-[15px] font-semibold text-text-primary mb-4">Basic information</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Full name *</Label>
+              <Input id="name" {...register('name')} placeholder="Jane Doe" />
+              {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="company_name">Company name *</Label>
+              <Input id="company_name" {...register('company_name')} placeholder="Acme Corp" />
+              {errors.company_name && <p className="text-xs text-destructive">{errors.company_name.message}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email *</Label>
+              <Input id="email" type="email" {...register('email')} placeholder="jane@acme.com" />
+              {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="phone">Phone</Label>
+              <Input id="phone" {...register('phone')} placeholder="+1 555 000 0000" />
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="company_name">Company name</Label>
-            <Input id="company_name" {...register('company_name')} placeholder="Acme Corp" />
+        </div>
+
+        {/* Address */}
+        <div>
+          <h3 className="text-[15px] font-semibold text-text-primary mb-4">Address</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2 space-y-1.5">
+              <Label htmlFor="address_line1">Address line 1</Label>
+              <Input id="address_line1" {...register('address_line1')} placeholder="123 Main St" />
+            </div>
+            <div className="sm:col-span-2 space-y-1.5">
+              <Label htmlFor="address_line2">Address line 2</Label>
+              <Input id="address_line2" {...register('address_line2')} placeholder="Suite 100" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="city">City</Label>
+              <Input id="city" {...register('city')} placeholder="San Francisco" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="state">State / Province</Label>
+              <Input id="state" {...register('state')} placeholder="CA" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="zip_code">ZIP / Postal code</Label>
+              <Input id="zip_code" {...register('zip_code')} placeholder="94105" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="country">Country</Label>
+              <Input id="country" {...register('country')} placeholder="United States" />
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="email">Email *</Label>
-            <Input id="email" type="email" {...register('email')} placeholder="jane@acme.com" />
-            {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+        </div>
+
+        {/* Billing preferences */}
+        <div>
+          <h3 className="text-[15px] font-semibold text-text-primary mb-4">Billing preferences</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="tax_id">Tax ID / VAT</Label>
+              <Input id="tax_id" {...register('tax_id')} placeholder="US123456789" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Currency</Label>
+              <Select
+                defaultValue={customer?.currency_preference ?? ''}
+                onValueChange={(v) => setValue('currency_preference', v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Use account default" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.code} — {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Payment terms</Label>
+              <Select
+                defaultValue={customer?.payment_terms?.toString() ?? ''}
+                onValueChange={(v) => setValue('payment_terms', parseInt(v))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Use account default" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_TERMS_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value.toString()}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="phone">Phone</Label>
-            <Input id="phone" {...register('phone')} placeholder="+1 555 000 0000" />
-          </div>
+        </div>
+
+        {/* Internal notes */}
+        <div className="space-y-1.5">
+          <Label htmlFor="notes">Internal notes</Label>
+          <Textarea
+            id="notes"
+            {...register('notes')}
+            placeholder="Notes about this customer (never shown on invoices)"
+            rows={3}
+          />
         </div>
       </div>
 
-      {/* Address */}
-      <div>
-        <h3 className="text-sm font-semibold text-text-primary mb-3">Address</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="sm:col-span-2 space-y-1.5">
-            <Label htmlFor="address_line1">Address line 1</Label>
-            <Input id="address_line1" {...register('address_line1')} placeholder="123 Main St" />
-          </div>
-          <div className="sm:col-span-2 space-y-1.5">
-            <Label htmlFor="address_line2">Address line 2</Label>
-            <Input id="address_line2" {...register('address_line2')} placeholder="Suite 100" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="city">City</Label>
-            <Input id="city" {...register('city')} placeholder="San Francisco" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="state">State / Province</Label>
-            <Input id="state" {...register('state')} placeholder="CA" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="zip_code">ZIP / Postal code</Label>
-            <Input id="zip_code" {...register('zip_code')} placeholder="94105" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="country">Country</Label>
-            <Input id="country" {...register('country')} placeholder="United States" />
-          </div>
+      {/* Fixed bottom bar for CTAs */}
+      {modal ? (
+        <div className="flex items-center justify-end gap-3 pt-4 mt-4 border-t border-border">
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+            {isSubmitting ? 'Saving…' : 'Create customer'}
+          </Button>
         </div>
-      </div>
-
-      {/* Billing preferences */}
-      <div>
-        <h3 className="text-sm font-semibold text-text-primary mb-3">Billing preferences</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="tax_id">Tax ID / VAT</Label>
-            <Input id="tax_id" {...register('tax_id')} placeholder="US123456789" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Currency</Label>
-            <Select
-              defaultValue={customer?.currency_preference ?? ''}
-              onValueChange={(v) => setValue('currency_preference', v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Use account default" />
-              </SelectTrigger>
-              <SelectContent>
-                {CURRENCIES.map((c) => (
-                  <SelectItem key={c.code} value={c.code}>
-                    {c.code} — {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Payment terms</Label>
-            <Select
-              defaultValue={customer?.payment_terms?.toString() ?? ''}
-              onValueChange={(v) => setValue('payment_terms', parseInt(v))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Use account default" />
-              </SelectTrigger>
-              <SelectContent>
-                {PAYMENT_TERMS_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value.toString()}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      ) : (
+        <div className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-end gap-3 h-16 px-6 border-t border-border bg-background">
+          <Button type="button" variant="outline" onClick={() => router.back()}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+            {isSubmitting ? 'Saving…' : isEdit ? 'Save changes' : 'Create Customer'}
+          </Button>
         </div>
-      </div>
-
-      {/* Internal notes */}
-      <div className="space-y-1.5">
-        <Label htmlFor="notes">Internal notes</Label>
-        <Textarea
-          id="notes"
-          {...register('notes')}
-          placeholder="Notes about this customer (never shown on invoices)"
-          rows={3}
-        />
-      </div>
-
-      <div className="flex items-center gap-3 pt-2">
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving…' : isEdit ? 'Save changes' : 'Create customer'}
-        </Button>
-        <Button type="button" variant="outline" onClick={() => router.back()}>
-          Cancel
-        </Button>
-      </div>
+      )}
     </form>
   );
 }

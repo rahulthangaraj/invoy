@@ -4,13 +4,13 @@ const invoiceItemSchema = z.object({
   id: z.string().optional(),
   description: z.string().min(1, 'Description is required'),
   quantity: z.number().min(0.001, 'Quantity must be greater than 0'),
-  unit_price: z.number().min(0, 'Price must be 0 or greater'),
+  unit_price: z.number().min(0.01, 'Unit price must be greater than 0'),
   amount: z.number(),
   sort_order: z.number(),
 });
 
 export const invoiceSchema = z.object({
-  customer_id: z.string().nullable(),
+  customer_id: z.string().min(1, 'Please select a customer'),
   invoice_number: z.string().min(1, 'Invoice number is required'),
   type: z.enum(['one-time', 'recurring']),
   issue_date: z.string().min(1, 'Issue date is required'),

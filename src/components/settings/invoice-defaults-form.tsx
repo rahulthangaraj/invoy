@@ -3,6 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 import { invoiceDefaultsSchema } from '@/lib/validations/organization-schema';
 import { updateOrganization } from '@/lib/actions/organization-actions';
@@ -58,7 +59,8 @@ export function InvoiceDefaultsForm({ organization }: { organization: Organizati
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <div>
-        <h3 className="text-sm font-semibold text-text-primary mb-3">Invoice numbering</h3>
+        <h3 className="text-[15px] font-semibold text-text-primary mb-1">Invoice numbering</h3>
+        <p className="text-xs text-text-tertiary mb-3">Configure how invoice numbers are generated</p>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="invoice_prefix">Invoice prefix</Label>
@@ -80,7 +82,8 @@ export function InvoiceDefaultsForm({ organization }: { organization: Organizati
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold text-text-primary mb-3">Defaults</h3>
+        <h3 className="text-[15px] font-semibold text-text-primary mb-1">Defaults</h3>
+        <p className="text-xs text-text-tertiary mb-3">Pre-filled values on new invoices</p>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label>Default currency</Label>
@@ -145,7 +148,8 @@ export function InvoiceDefaultsForm({ organization }: { organization: Organizati
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold text-text-primary mb-3">Default content</h3>
+        <h3 className="text-[15px] font-semibold text-text-primary mb-1">Default content</h3>
+        <p className="text-xs text-text-tertiary mb-3">Auto-filled on new invoices</p>
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="default_notes">Default notes</Label>
@@ -168,9 +172,13 @@ export function InvoiceDefaultsForm({ organization }: { organization: Organizati
         </div>
       </div>
 
-      <Button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? 'Saving…' : 'Save changes'}
-      </Button>
+      {/* Fixed bottom CTA */}
+      <div className="sticky bottom-0 bg-background border-t border-border py-3 mt-6 flex items-center justify-end">
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+          {isSubmitting ? 'Saving…' : 'Save changes'}
+        </Button>
+      </div>
     </form>
   );
 }

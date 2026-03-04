@@ -10,7 +10,7 @@ export const customerSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email address'),
   phone: nullableString,
-  company_name: nullableString,
+  company_name: z.string().min(1, 'Company name is required'),
   address_line1: nullableString,
   address_line2: nullableString,
   city: nullableString,

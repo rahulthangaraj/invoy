@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Pencil, Send, CheckCircle, Trash2 } from 'lucide-react';
+import { Pencil, Send, CheckCircle, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import type { Invoice } from '@/lib/types';
@@ -27,17 +27,21 @@ interface InvoiceActionsProps {
 export function InvoiceActions({ invoice }: InvoiceActionsProps) {
   const router = useRouter();
   const [showDelete, setShowDelete] = useState(false);
+  const [sendingAction, setSendingAction] = useState<string | null>(null);
 
   async function handleMarkPaid() {
+    setSendingAction('paid');
     const result = await markInvoicePaid(invoice.id);
     if (result.error) {
       toast.error(result.error);
     } else {
       toast.success('Invoice marked as paid');
     }
+    setSendingAction(null);
   }
 
   async function handleSend() {
+    setSendingAction('send');
     try {
       const res = await fetch(`/api/invoices/${invoice.id}/send`, { method: 'POST' });
       const data = (await res.json()) as { error?: string };
@@ -49,9 +53,11 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
     } catch {
       toast.error('Failed to send invoice');
     }
+    setSendingAction(null);
   }
 
   async function handleDelete() {
+    setSendingAction('delete');
     const result = await deleteInvoice(invoice.id);
     if (result.error) {
       toast.error(result.error);
@@ -60,6 +66,7 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
       router.push('/');
     }
     setShowDelete(false);
+    setSendingAction(null);
   }
 
   return (
@@ -73,13 +80,13 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
             </Link>
           </Button>
         )}
-        <Button size="sm" variant="outline" onClick={handleSend}>
-          <Send className="w-4 h-4 mr-1.5" />
+        <Button size="sm" variant="outline" onClick={handleSend} disabled={sendingAction !== null}>
+          {sendingAction === 'send' ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Send className="w-4 h-4 mr-1.5" />}
           Send
         </Button>
         {invoice.status !== 'paid' && (
-          <Button size="sm" variant="outline" onClick={handleMarkPaid}>
-            <CheckCircle className="w-4 h-4 mr-1.5" />
+          <Button size="sm" variant="outline" onClick={handleMarkPaid} disabled={sendingAction !== null}>
+            {sendingAction === 'paid' ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <CheckCircle className="w-4 h-4 mr-1.5" />}
             Mark paid
           </Button>
         )}
@@ -88,6 +95,7 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
           variant="outline"
           className="text-destructive hover:text-destructive border-destructive/30"
           onClick={() => setShowDelete(true)}
+          disabled={sendingAction !== null}
         >
           <Trash2 className="w-4 h-4" />
         </Button>
@@ -107,6 +115,7 @@ export function InvoiceActions({ invoice }: InvoiceActionsProps) {
               onClick={handleDelete}
               className="bg-destructive hover:bg-destructive/90"
             >
+              {sendingAction === 'delete' && <Loader2 className="w-4 h-4 animate-spin mr-1.5" />}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

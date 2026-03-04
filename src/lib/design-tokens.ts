@@ -6,7 +6,7 @@
 
 export const tokens = {
   colors: {
-    background: '#fafafa',
+    background: '#ffffff',
     surface: '#ffffff',
     surfaceSecondary: '#f5f5f7',
     border: '#e5e5e5',
@@ -19,18 +19,21 @@ export const tokens = {
     },
 
     primary: {
-      default: '#1a1a2e',
-      hover: '#16213e',
-      subtle: '#e8eaf6',
+      default: '#2563eb',
+      hover: '#1d4ed8',
+      light: '#dbeafe',
+      lighter: '#eff6ff',
+      ring: 'rgba(37, 99, 235, 0.2)',
+      subtle: '#dbeafe',
       foreground: '#ffffff',
     },
 
     sidebar: {
-      bg: '#0a0a0a',
-      text: '#a3a3a3',
-      textActive: '#ffffff',
-      hover: '#171717',
-      active: '#1a1a2e',
+      bg: '#f5f5f7',
+      text: '#737373',
+      textActive: '#2563eb',
+      hover: '#eaeaed',
+      active: 'rgba(37, 99, 235, 0.08)',
     },
 
     status: {

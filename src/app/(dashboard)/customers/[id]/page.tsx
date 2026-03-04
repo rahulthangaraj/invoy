@@ -1,9 +1,8 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Pencil, FileText } from 'lucide-react';
+import { ArrowLeft, Pencil, FileText } from 'lucide-react';
 import { getCustomerById } from '@/lib/queries/customer-queries';
 import { getInvoices } from '@/lib/queries/invoice-queries';
-import { PageHeader } from '@/components/composed/page-header';
 import { Button } from '@/components/ui/button';
 import { InvoiceTable } from '@/components/invoice/invoice-table';
 
@@ -22,26 +21,41 @@ export default async function CustomerDetailPage({ params }: Props) {
 
   return (
     <div>
-      <PageHeader
-        title={customer.company_name ?? customer.name}
-        description={customer.company_name ? customer.name : customer.email}
-        actions={
-          <div className="flex gap-2">
-            <Button asChild size="sm" variant="outline">
-              <Link href={`/invoices/new?customer=${customer.id}`}>
-                <FileText className="w-4 h-4 mr-1.5" />
-                New invoice
-              </Link>
-            </Button>
-            <Button asChild size="sm">
-              <Link href={`/customers/${customer.id}/edit`}>
-                <Pencil className="w-4 h-4 mr-1.5" />
-                Edit
-              </Link>
-            </Button>
+      {/* Back nav + actions */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center gap-4">
+          <Link
+            href="/customers"
+            className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Customers
+          </Link>
+          <div className="h-5 w-px bg-border" />
+          <div>
+            <h1 className="text-lg font-semibold text-text-primary tracking-tight">
+              {customer.company_name ?? customer.name}
+            </h1>
+            <p className="text-sm text-text-secondary">
+              {customer.company_name ? customer.name : customer.email}
+            </p>
           </div>
-        }
-      />
+        </div>
+        <div className="flex gap-2">
+          <Button asChild size="sm" variant="outline">
+            <Link href={`/invoices/new?customer=${customer.id}`}>
+              <FileText className="w-4 h-4 mr-1.5" />
+              New invoice
+            </Link>
+          </Button>
+          <Button asChild size="sm">
+            <Link href={`/customers/${customer.id}/edit`}>
+              <Pencil className="w-4 h-4 mr-1.5" />
+              Edit
+            </Link>
+          </Button>
+        </div>
+      </div>
 
       <div className="px-6 py-5 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Contact info */}
