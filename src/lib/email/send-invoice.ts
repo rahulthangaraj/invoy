@@ -33,7 +33,7 @@ export async function sendInvoiceEmail(
   });
 
   const { error } = await resend.emails.send({
-    from: `${organization.name} <invoices@resend.dev>`,
+    from: `${organization.name} <invoices@invoy.site>`,
     to: [invoice.customer.email],
     subject: `Invoice ${invoice.invoice_number} from ${organization.name}`,
     html,
