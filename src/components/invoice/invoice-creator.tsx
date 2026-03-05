@@ -193,7 +193,45 @@ export function InvoiceCreator({
     setCustomerError(null);
     setSendEmailError(null);
 
-    // Run zod validation
+    // For draft: skip ALL validation, save whatever exists
+    if (status === 'draft') {
+      const values = form.getValues();
+      setSaving('draft');
+
+      // Fill in defaults for missing fields
+      const draftValues = {
+        ...values,
+        customer_id: values.customer_id || null,
+        due_date: values.due_date || format(addDays(new Date(), 30), 'yyyy-MM-dd'),
+        issue_date: values.issue_date || today,
+        invoice_number: values.invoice_number || nextInvoiceNumber,
+        currency: values.currency || organization?.default_currency || 'USD',
+        items: values.items?.filter((i) => i.description || i.unit_price > 0) ?? [],
+        status: 'draft' as const,
+      };
+
+      try {
+        const result = isEdit
+          ? await updateInvoice(existingInvoice.id, draftValues as Partial<InvoiceFormData>)
+          : await createInvoice(draftValues as InvoiceFormData);
+
+        if (result.error) {
+          toast.error(result.error);
+          setSaving(null);
+          return;
+        }
+
+        toast.success('Invoice saved as draft');
+        router.push('/');
+        router.refresh();
+      } catch {
+        toast.error('Something went wrong. Please try again.');
+        setSaving(null);
+      }
+      return;
+    }
+
+    // For "Create & Send" / "pending": run full validation
     const valid = await form.trigger();
 
     // Custom validation: customer must be selected
@@ -245,13 +283,7 @@ export function InvoiceCreator({
           toast.error('Invoice created but failed to send');
         }
       } else {
-        toast.success(
-          isEdit
-            ? 'Invoice updated'
-            : status === 'draft'
-              ? 'Invoice saved as draft'
-              : 'Invoice created',
-        );
+        toast.success(isEdit ? 'Invoice updated' : 'Invoice created');
       }
 
       router.push('/');

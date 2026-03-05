@@ -8,15 +8,10 @@ export interface PageHeaderProps {
   className?: string;
 }
 
-export function PageHeader({ title, description, actions, className }: PageHeaderProps) {
+export function PageHeader({ title, actions, className }: PageHeaderProps) {
   return (
-    <div className={cn('flex items-start justify-between px-6 py-5 border-b border-border', className)}>
-      <div>
-        <h1 className="text-lg font-semibold text-text-primary tracking-tight">{title}</h1>
-        {description && (
-          <p className="text-sm text-text-secondary mt-0.5">{description}</p>
-        )}
-      </div>
+    <div className={cn('flex items-center justify-between h-14 px-6 border-b border-border', className)}>
+      <h1 className="text-sm font-semibold text-text-primary tracking-tight">{title}</h1>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </div>
   );
