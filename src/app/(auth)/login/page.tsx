@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Zap } from 'lucide-react';
+import { Zap, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { createClient } from '@/lib/supabase/client';
@@ -90,7 +90,8 @@ export default function LoginPage() {
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading && <Loader2 className="w-4 h-4 animate-spin mr-1.5" />}
+            {loading ? 'Signing in...' : 'Sign in'}
           </Button>
         </form>
 

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createOrganization } from '@/lib/actions/organization-actions';
 import { CURRENCIES } from '@/lib/constants';
@@ -20,13 +21,10 @@ import {
 } from '@/components/ui/select';
 
 const onboardingSchema = z.object({
-  name: z.string().min(1, 'Business name is required'),
+  full_name: z.string().min(1, 'Full name is required'),
+  company_name: z.string().min(1, 'Company name is required'),
   email: z.string().email('Enter a valid email'),
   default_currency: z.string().min(1),
-  default_tax_rate: z
-    .string()
-    .optional()
-    .transform((v) => (v === '' || v === undefined ? null : parseFloat(v))),
 });
 
 type FormInput = z.input<typeof onboardingSchema>;
@@ -49,10 +47,10 @@ export function OnboardingForm({ userEmail }: OnboardingFormProps) {
   } = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
-      name: '',
+      full_name: '',
+      company_name: '',
       email: userEmail,
       default_currency: 'USD',
-      default_tax_rate: '',
     },
   });
 
@@ -60,10 +58,10 @@ export function OnboardingForm({ userEmail }: OnboardingFormProps) {
     setIsSubmitting(true);
     try {
       const result = await createOrganization({
-        name: data.name,
+        name: data.company_name,
         email: data.email,
         default_currency: data.default_currency,
-        default_tax_rate: data.default_tax_rate,
+        default_tax_rate: null,
       });
 
       if (result.error) {
@@ -82,26 +80,41 @@ export function OnboardingForm({ userEmail }: OnboardingFormProps) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      {/* Business name */}
+      {/* Full name */}
       <div className="space-y-1.5">
-        <Label htmlFor="name">
-          Business name <span className="text-destructive">*</span>
+        <Label htmlFor="full_name">
+          Full name <span className="text-destructive">*</span>
         </Label>
         <Input
-          id="name"
-          placeholder="Acme Inc."
-          {...register('name')}
+          id="full_name"
+          placeholder="Jane Doe"
+          {...register('full_name')}
           autoFocus
         />
-        {errors.name && (
-          <p className="text-xs text-destructive">{errors.name.message}</p>
+        {errors.full_name && (
+          <p className="text-xs text-destructive">{errors.full_name.message}</p>
         )}
       </div>
 
-      {/* Business email */}
+      {/* Company name */}
+      <div className="space-y-1.5">
+        <Label htmlFor="company_name">
+          Company name <span className="text-destructive">*</span>
+        </Label>
+        <Input
+          id="company_name"
+          placeholder="Acme Inc."
+          {...register('company_name')}
+        />
+        {errors.company_name && (
+          <p className="text-xs text-destructive">{errors.company_name.message}</p>
+        )}
+      </div>
+
+      {/* Company email */}
       <div className="space-y-1.5">
         <Label htmlFor="email">
-          Business email <span className="text-destructive">*</span>
+          Company email <span className="text-destructive">*</span>
         </Label>
         <Input
           id="email"
@@ -116,7 +129,7 @@ export function OnboardingForm({ userEmail }: OnboardingFormProps) {
 
       {/* Currency */}
       <div className="space-y-1.5">
-        <Label>Default currency</Label>
+        <Label>Currency preference</Label>
         <Select
           value={watch('default_currency')}
           onValueChange={(v) => setValue('default_currency', v)}
@@ -134,31 +147,9 @@ export function OnboardingForm({ userEmail }: OnboardingFormProps) {
         </Select>
       </div>
 
-      {/* Tax rate (optional) */}
-      <div className="space-y-1.5">
-        <Label htmlFor="tax_rate">
-          Default tax rate{' '}
-          <span className="text-text-tertiary font-normal">(optional)</span>
-        </Label>
-        <div className="relative">
-          <Input
-            id="tax_rate"
-            type="number"
-            step="0.01"
-            min="0"
-            max="100"
-            placeholder="0"
-            {...register('default_tax_rate')}
-            className="pr-8"
-          />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-text-tertiary pointer-events-none">
-            %
-          </span>
-        </div>
-      </div>
-
       <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? 'Setting up…' : 'Continue to dashboard'}
+        {isSubmitting && <Loader2 className="w-4 h-4 animate-spin mr-1.5" />}
+        {isSubmitting ? 'Setting up...' : 'Continue to dashboard'}
       </Button>
     </form>
   );

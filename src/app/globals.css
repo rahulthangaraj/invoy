@@ -46,12 +46,12 @@
   --text-secondary: #525252;
   --text-tertiary: #a3a3a3;
 
-  /* Sidebar (warm gray bg / Linear-style) */
-  --sidebar-bg: #f9fafb;
-  --sidebar-text: #737373;
-  --sidebar-text-active: #2563eb;
-  --sidebar-hover: #f3f4f6;
-  --sidebar-active: #eff6ff;
+  /* Sidebar (neutral gray — no blue) */
+  --sidebar-bg: #F5F5F5;
+  --sidebar-text: #525252;
+  --sidebar-text-active: #1a1a1a;
+  --sidebar-hover: #EFEFEF;
+  --sidebar-active: #E8E8E8;
 
   /* Status colors */
   --status-paid-text: #059669;

@@ -44,7 +44,7 @@ export default async function OnboardingPage() {
           <div className="mb-6">
             <h1 className="text-xl font-semibold text-text-primary">Set up your workspace</h1>
             <p className="text-sm text-text-secondary mt-1">
-              Tell us about your business. You can update these details anytime in Settings.
+              Tell us about yourself and your business to get started.
             </p>
           </div>
           <OnboardingForm userEmail={user.email ?? ''} />

@@ -30,6 +30,16 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Switch } from '@/components/ui/switch';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface InvoiceCreatorProps {
   organization: Organization | null;
@@ -51,6 +61,8 @@ export function InvoiceCreator({
   const [saving, setSaving] = useState<'draft' | 'pending' | 'send' | null>(null);
   const [customerError, setCustomerError] = useState<string | null>(null);
   const [sendEmailError, setSendEmailError] = useState<string | null>(null);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -136,6 +148,36 @@ export function InvoiceCreator({
     });
   }, [watchedValues.items, form]);
 
+  // Warn on browser back / tab close if form is dirty
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (form.formState.isDirty && saving === null) {
+        e.preventDefault();
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [form.formState.isDirty, saving]);
+
+  function handleClose(href = '/') {
+    if (form.formState.isDirty && saving === null) {
+      setPendingNavigation(href);
+      setShowUnsavedDialog(true);
+    } else {
+      router.push(href);
+    }
+  }
+
+  async function handleDiscardAndNavigate() {
+    setShowUnsavedDialog(false);
+    router.push(pendingNavigation ?? '/');
+  }
+
+  async function handleSaveAsDraftAndNavigate() {
+    setShowUnsavedDialog(false);
+    await handleSave('draft');
+  }
+
   function scrollToFirstError() {
     // Small delay to let error elements render
     setTimeout(() => {
@@ -203,10 +245,17 @@ export function InvoiceCreator({
           toast.error('Invoice created but failed to send');
         }
       } else {
-        toast.success(isEdit ? 'Invoice updated' : status === 'draft' ? 'Draft saved' : 'Invoice created');
+        toast.success(
+          isEdit
+            ? 'Invoice updated'
+            : status === 'draft'
+              ? 'Invoice saved as draft'
+              : 'Invoice created',
+        );
       }
 
       router.push('/');
+      router.refresh();
     } catch {
       toast.error('Something went wrong. Please try again.');
       setSaving(null);
@@ -231,7 +280,7 @@ export function InvoiceCreator({
           {isEdit ? 'Edit Invoice' : 'New Invoice'}
         </h1>
         <button
-          onClick={() => router.push('/')}
+          onClick={() => handleClose('/')}
           className="flex items-center justify-center w-8 h-8 rounded-md text-text-tertiary hover:text-text-primary hover:bg-[#f3f4f6] transition-colors"
           aria-label="Close"
         >
@@ -679,7 +728,7 @@ export function InvoiceCreator({
           onClick={() => handleSave('draft')}
           disabled={saving !== null}
         >
-          {saving === 'draft' && <Loader2 className="w-4 h-4 animate-spin" />}
+          {saving === 'draft' && <Loader2 className="w-4 h-4 animate-spin mr-1.5" />}
           Save as Draft
         </Button>
         <Button
@@ -687,10 +736,34 @@ export function InvoiceCreator({
           onClick={() => handleSave('pending', !isEdit)}
           disabled={saving !== null}
         >
-          {(saving === 'pending' || saving === 'send') && <Loader2 className="w-4 h-4 animate-spin" />}
+          {(saving === 'pending' || saving === 'send') && <Loader2 className="w-4 h-4 animate-spin mr-1.5" />}
           {isEdit ? 'Update Invoice' : 'Create & Send'}
         </Button>
       </div>
+
+      {/* Unsaved changes dialog */}
+      <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>You have unsaved changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              Save as draft or discard your changes?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDiscardAndNavigate}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Discard
+            </AlertDialogAction>
+            <AlertDialogAction onClick={handleSaveAsDraftAndNavigate}>
+              Save as Draft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

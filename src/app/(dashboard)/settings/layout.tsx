@@ -10,8 +10,7 @@ export default async function SettingsLayout({ children }: { children: ReactNode
   return (
     <div>
       <div className="px-6 py-5 border-b border-border">
-        <h1 className="text-xl font-semibold text-text-primary tracking-tight">Settings</h1>
-        <p className="text-sm text-text-secondary mt-0.5">Manage your account and invoice defaults.</p>
+        <h1 className="text-lg font-semibold text-text-primary tracking-tight">Settings</h1>
       </div>
 
       <SettingsNav />

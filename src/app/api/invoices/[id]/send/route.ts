@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { getInvoiceById } from '@/lib/queries/invoice-queries';
 import { getOrganization } from '@/lib/queries/organization-queries';
@@ -29,6 +30,9 @@ export async function POST(
     .from('invoices')
     .update({ sent_at: new Date().toISOString(), status: 'pending' })
     .eq('id', id);
+
+  revalidatePath('/');
+  revalidatePath(`/invoices/${id}`);
 
   return NextResponse.json({ data: { sent: true }, error: null });
 }

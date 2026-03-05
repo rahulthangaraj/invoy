@@ -52,8 +52,8 @@ function NavLinks({
                 'flex items-center h-9 rounded-md text-sm font-medium transition-colors duration-150',
                 collapsed ? 'justify-center px-0 w-9 mx-auto' : 'gap-2.5 px-3',
                 isActive(href)
-                  ? 'bg-sidebar-active text-sidebar-text-active'
-                  : 'text-sidebar-text hover:bg-sidebar-hover hover:text-text-primary',
+                  ? 'bg-sidebar-active text-sidebar-text-active font-medium'
+                  : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-active',
               )}
             >
               <Icon className="w-[18px] h-[18px] shrink-0" strokeWidth={1.5} />
