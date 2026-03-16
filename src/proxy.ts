@@ -31,7 +31,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes that don't need auth
-  const publicRoutes = ['/login', '/signup', '/invoice'];
+  const publicRoutes = ['/login', '/signup', '/invoice', '/auth'];
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
 
   // /onboarding is accessible to authenticated users only (no redirect away)

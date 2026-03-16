@@ -1,34 +1,45 @@
 import { notFound } from 'next/navigation';
 import { format } from 'date-fns';
 import { Download } from 'lucide-react';
-import { getInvoiceByPublicId } from '@/lib/queries/invoice-queries';
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/server';
 import { StatusBadge } from '@/components/composed/status-badge';
 import { CurrencyDisplay } from '@/components/composed/currency-display';
-import type { Organization } from '@/lib/types';
+import type { Invoice, Organization } from '@/lib/types';
 import { CURRENCY_SYMBOLS } from '@/lib/constants';
 
 interface Props {
   params: Promise<{ publicId: string }>;
 }
 
-async function getOrganizationForInvoice(orgId: string): Promise<Organization | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
+async function getPublicInvoiceData(publicId: string) {
+  const supabase = await createServiceClient();
+
+  const { data: invoice, error } = await supabase
+    .from('invoices')
+    .select('*, customer:customers(*), items:invoice_items(*)')
+    .eq('public_id', publicId)
+    .order('sort_order', { referencedTable: 'invoice_items', ascending: true })
+    .single();
+
+  if (error || !invoice) return { invoice: null, organization: null };
+
+  const { data: org } = await supabase
     .from('organizations')
     .select('*')
-    .eq('id', orgId)
+    .eq('id', invoice.organization_id)
     .single();
-  return data as Organization | null;
+
+  return {
+    invoice: invoice as unknown as Invoice,
+    organization: org as Organization | null,
+  };
 }
 
 export default async function PublicInvoicePage({ params }: Props) {
   const { publicId } = await params;
-  const invoice = await getInvoiceByPublicId(publicId);
+  const { invoice, organization } = await getPublicInvoiceData(publicId);
 
   if (!invoice) notFound();
-
-  const organization = await getOrganizationForInvoice(invoice.organization_id);
   const brandColor = organization?.brand_color ?? '#2563eb';
   const symbol = CURRENCY_SYMBOLS[invoice.currency] ?? invoice.currency;
   const fmt = (n: number) =>

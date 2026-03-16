@@ -19,6 +19,7 @@ export default function SignupPage() {
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [existingEmail, setExistingEmail] = useState(false);
 
   const {
     register,
@@ -28,14 +29,25 @@ export default function SignupPage() {
 
   async function onSubmit(data: SignupFormData) {
     setLoading(true);
+    setExistingEmail(false);
 
     const { data: authData, error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
     });
 
     if (error) {
       toast.error(error.message);
+      setLoading(false);
+      return;
+    }
+
+    // Supabase returns a user with empty identities when email already exists
+    if (authData.user && authData.user.identities?.length === 0) {
+      setExistingEmail(true);
       setLoading(false);
       return;
     }
@@ -103,10 +115,23 @@ export default function SignupPage() {
               type="email"
               placeholder="you@company.com"
               {...register('email')}
-              className={errors.email ? 'border-destructive focus-visible:ring-destructive/20' : ''}
+              className={(errors.email || existingEmail) ? 'border-destructive focus-visible:ring-destructive/20' : ''}
             />
             {errors.email && (
               <p className="text-xs text-destructive">{errors.email.message}</p>
+            )}
+            {existingEmail && (
+              <div className="space-y-1">
+                <p className="text-xs text-destructive">
+                  This email is already registered. Please sign in.
+                </p>
+                <Link
+                  href="/login"
+                  className="text-xs text-primary font-medium hover:underline"
+                >
+                  Already have an account? Sign in
+                </Link>
+              </div>
             )}
           </div>
 

@@ -208,7 +208,7 @@ export function CustomerForm({ customer, onSuccess, modal }: CustomerFormProps) 
         <div className="flex items-center justify-end gap-3 pt-4 mt-4 border-t border-border">
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-            {isSubmitting ? 'Saving…' : 'Create customer'}
+            {isSubmitting ? 'Saving…' : isEdit ? 'Save changes' : 'Create customer'}
           </Button>
         </div>
       ) : (

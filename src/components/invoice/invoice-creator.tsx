@@ -302,6 +302,11 @@ export function InvoiceCreator({
     setSendEmailError(null);
   }
 
+  function handleCustomerUpdated(customer: Customer) {
+    setAllCustomers((prev) => prev.map((c) => (c.id === customer.id ? customer : c)));
+    setSelectedCustomer(customer);
+  }
+
   const formValues = watchedValues as InvoiceFormValues;
 
   return (
@@ -347,6 +352,7 @@ export function InvoiceCreator({
                     }
                   }}
                   onNewCustomerCreated={handleNewCustomerCreated}
+                  onCustomerUpdated={handleCustomerUpdated}
                 />
                 {(customerError || form.formState.errors.customer_id) && (
                   <p className="text-xs text-destructive mt-1.5">

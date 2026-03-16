@@ -24,7 +24,11 @@ export async function sendInvoiceEmail(
     orgName: organization.name,
     brandColor: organization.brand_color,
     invoiceNumber: invoice.invoice_number,
-    customerName: invoice.customer.company_name ?? invoice.customer.name,
+    customerName: invoice.customer.name
+      ? invoice.customer.name
+      : invoice.customer.company_name
+        ? `${invoice.customer.company_name} team`
+        : '',
     total,
     dueDate: invoice.due_date,
     paymentLinkUrl: invoice.payment_link_url ?? organization.payment_link_url,
@@ -91,7 +95,7 @@ function buildEmailHtml({
 
     <!-- Body -->
     <div style="padding:32px 40px;">
-      <p style="color:#525252;font-size:14px;margin:0 0 24px;">Hi ${customerName},</p>
+      <p style="color:#525252;font-size:14px;margin:0 0 24px;">Hi${customerName ? ` ${customerName}` : ''},</p>
       <p style="color:#0a0a0a;font-size:14px;margin:0 0 24px;">
         Here's your invoice <strong style="font-family:monospace;">${invoiceNumber}</strong> for <strong>${total}</strong>, due on ${formattedDue}.
       </p>
