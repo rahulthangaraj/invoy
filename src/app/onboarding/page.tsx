@@ -47,7 +47,10 @@ export default async function OnboardingPage() {
               Tell us about yourself and your business to get started.
             </p>
           </div>
-          <OnboardingForm userEmail={user.email ?? ''} />
+          <OnboardingForm
+            userEmail={user.email ?? ''}
+            userName={(user.user_metadata?.full_name as string) ?? (user.user_metadata?.name as string) ?? ''}
+          />
         </div>
       </div>
     </div>

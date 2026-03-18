@@ -32,9 +32,10 @@ type FormOutput = z.output<typeof onboardingSchema>;
 
 interface OnboardingFormProps {
   userEmail: string;
+  userName?: string;
 }
 
-export function OnboardingForm({ userEmail }: OnboardingFormProps) {
+export function OnboardingForm({ userEmail, userName }: OnboardingFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -47,7 +48,7 @@ export function OnboardingForm({ userEmail }: OnboardingFormProps) {
   } = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
-      full_name: '',
+      full_name: userName ?? '',
       company_name: '',
       email: userEmail,
       default_currency: 'USD',
